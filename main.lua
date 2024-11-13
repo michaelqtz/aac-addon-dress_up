@@ -3,24 +3,28 @@ local api = require("api")
 local dress_up_addon = {
 	name = "Dress-Up",
 	author = "Michaelqt",
-	version = "0.2",
+	version = "1.0",
 	desc = "Preview the visual appearance of equipment."
 }
 local RELAX_ANIMATION_NAME = "fist_ba_relaxed_rand_idle"
-local dressUpModelViewerX = 350
-local dressUpModelViewerY = 550
+local dressUpModelViewerX = 365
+local dressUpModelViewerY = 700
 local turnLeft = false
 local turnRight = false
 local mouseX = nil
 local drag = false
 
 local itemsHelper
+local animationHelper
 
 local dressUpWindow
 local isFirstOpen
 local currentPage
 local currentCategory
 local categories
+local animCategories
+local animCurrentCategory
+local animations
 local items
 local ddsPaths
 local pageSize = 1000
@@ -67,13 +71,6 @@ local function LayoutSetFunc(frame, rowIndex, colIndex, subItem)
     ApplyTextColor(textbox, FONT_COLOR.DEFAULT)
     subItem.textbox = textbox
 
-    if rowIndex ~= 1 then
-        local line = subItem:CreateChildWidget("label", "label", 0, true)
-        line:AddAnchor("TOPLEFT", subItem, 0, 0)
-        line:AddAnchor("TOPRIGHT", subItem, 0, 0)
-        subItem.line = line
-    end
-
     local clickOverlay = subItem:CreateChildWidget("button", "clickOverlay", 0, true)
     clickOverlay:AddAnchor("TOPLEFT", subItem, 0, 0)
     clickOverlay:AddAnchor("BOTTOMRIGHT", subItem, 0, 0)
@@ -90,7 +87,7 @@ local function fillItemData(itemScrollList, pageIndex, searchText)
     end
     itemScrollList:DeleteAllDatas()
 
-    -- If there is earch text, cut that list down.
+    -- If there is search text, cut that list down.
     if searchText ~= nil then
         local count = 1
         local categoryName = categories[currentCategory]
@@ -145,7 +142,7 @@ local function isChatMessageFromPlayer(channel, unit, isHostile, name, message, 
         initModelViewer(dressUpWindow.modelViewer)
         toggleDressUpWindow(true)
         --return true
-    end 
+    end
     --return false
 end 
 -- OnUpdate for addon, for controlling model viewer.
@@ -168,16 +165,23 @@ end
 local function OnLoad()
     local settings = api.GetSettings("dress_up")
     local itemsHelper = require("dress_up/items_helper")
+    local animationHelper = require("dress_up/animation_helper")
 
     --- Draw Dress Up Main Window
     dressUpWindow = api.Interface:CreateWindow("dressUpWindow", "Dress Up")
+    dressUpWindow:SetHeight(800)
     -- Has the window been opened yet? 
     isFirstOpen = true
     -- What page do we start on?
     currentPage = 1
     -- What category should we view?
-    currentCategory = 1
+    currentCategory = 2
     categories = itemsHelper.categoryData
+    -- What animation category should we view?
+    animCurrentCategory = 4
+    animCategories = animationHelper.categories
+    -- We need some animation names
+    animations = animationHelper.animationData
     -- We need some items to view.
     items = itemsHelper.itemData
     -- And we need their icons.
@@ -190,10 +194,43 @@ local function OnLoad()
     local width = dressUpModelViewerX * 512 / dressUpModelViewerY
     modelViewer:SetModelViewExtent(width, 512)
     modelViewer:SetModelViewCoords((512 - width) / 2, 0, width, 512)
-    modelViewer:AddAnchor("LEFT", dressUpWindow, 5, 20)
+    modelViewer:AddAnchor("LEFT", dressUpWindow, 5, 0)
     -- TODO: backgrounds? -> modelViewer:SetModelViewBackground("ui/beautyshop/bg.dds")
-    --- Model Viewer Controls (zoom, rotate, reset)
+    --- Model Viewer Controls (zoom, rotate, reset, animations)
     local controlBarYOffset = 0
+    local animBarYOffset = 35
+    -- Animation Dropdowns + Label
+    local animCategoryBtn = api.Interface:CreateComboBox(modelViewer)
+    animCategoryBtn:AddAnchor("BOTTOMLEFT", modelViewer, 90, animBarYOffset)
+    animCategoryBtn:SetWidth(100)
+    animCategoryBtn.dropdownItem = animCategories
+    animCategoryBtn:Select(4)
+   
+    local animCategoryLabel = animCategoryBtn:CreateChildWidget("label", "animCategoryLabel", 0, true)
+    animCategoryLabel:SetText("Animation: ")
+    animCategoryLabel.style:SetAlign(ALIGN.RIGHT)
+    animCategoryLabel.style:SetFontSize(FONT_SIZE.XLARGE)
+    ApplyTextColor(animCategoryLabel, FONT_COLOR.DEFAULT)
+    animCategoryLabel:AddAnchor("TOPRIGHT", animCategoryBtn, "LEFT", 0, 0)
+    -- Animation     
+    local animSelectBtn = api.Interface:CreateComboBox(modelViewer)
+    animSelectBtn:AddAnchor("TOPLEFT", animCategoryBtn, "TOPRIGHT", 0, 0)
+    animSelectBtn:SetWidth(300)
+    animSelectBtn.dropdownItem = animations[animCategories[4]]
+    animSelectBtn:Select(1)
+    -- Animation Category Selection SelectedProc
+    function animCategoryBtn:SelectedProc()
+        local clickedAnimCategory = animCategories[self:GetSelectedIndex()]
+        animCurrentCategory  = self:GetSelectedIndex()
+        animSelectBtn.dropdownItem = animations[animCategories[animCurrentCategory]]
+        animSelectBtn:Select(1)
+    end 
+    -- Animation Selection SelectedProc
+    function animSelectBtn:SelectedProc()
+        local clickedAnimation = animations[animCategories[animCurrentCategory]][self:GetSelectedIndex()]
+        modelViewer:PlayAnimation(clickedAnimation, true)
+    end 
+
     -- Rotation through buttons
     local rotateRight = modelViewer:CreateChildWidget("button", "rotateRight", 0, true)
     rotateRight:AddAnchor("BOTTOMLEFT", modelViewer, 5, controlBarYOffset)
@@ -226,11 +263,7 @@ local function OnLoad()
     end
     rotateLeft:SetHandler("OnLeave", rotateLeft.OnLeave)
     -- Rotation through dragging
-    modelViewer:RegisterForDrag("LeftButton")
-    function modelViewer:OnDragStart(arg)
-        if arg ~= "LeftButton" then
-            return
-        end
+    function modelViewer:OnDragStart()
         drag = true
         local newMouseX, _ = api.Input:GetMousePos()
         mouseX = newMouseX
@@ -240,7 +273,7 @@ local function OnLoad()
         drag = false  
     end
     modelViewer:SetHandler("OnDragStop", modelViewer.OnDragStop)
-
+    modelViewer:EnableDrag(true)
     -- Zoom Controls
     local zoomIn = modelViewer:CreateChildWidget("button", "zoomIn", 0, true)
     zoomIn:AddAnchor("BOTTOMLEFT", modelViewer, 50, controlBarYOffset)
@@ -266,6 +299,11 @@ local function OnLoad()
     function reset:OnClick()
         modelViewer:ClearModel()
         initModelViewer(modelViewer)
+        animCategoryBtn:Select(4)
+        animCurrentCategory = 4
+        animSelectBtn.dropdownItem = animations[animCategories[animCurrentCategory]]
+        animSelectBtn:Select(1)
+        
     end 
     reset:SetHandler("OnClick", reset.OnClick)
 
@@ -277,7 +315,7 @@ local function OnLoad()
     itemScrollList.scroll:AddAnchor("TOPRIGHT", itemScrollList, 0, 0)
     itemScrollList.scroll:AddAnchor("BOTTOMRIGHT", itemScrollList, 0, 0)
     itemScrollList:InsertColumn("", 300, 0, DataSetFunc, nil, nil, LayoutSetFunc)
-    itemScrollList:InsertRows(10, false)
+    itemScrollList:InsertRows(14, false)
     itemScrollList:SetColumnHeight(40)
     -- Name Search Text Edit + Label
     nameSearchTextEdit = W_CTRL.CreateEdit("nameSearchTextEdit", dressUpWindow)
@@ -293,7 +331,9 @@ local function OnLoad()
     -- Name Search OnTextChanged
     function nameSearchTextEdit:OnTextChanged()
         local searchText = nameSearchTextEdit:GetText()
-		fillItemData(itemScrollList, 1, searchText)
+        if #searchText > 2 or #searchText == 0 then 
+            fillItemData(itemScrollList, 1, searchText)
+        end 
 	end
 	nameSearchTextEdit:SetHandler("OnTextChanged", nameSearchTextEdit.OnTextChanged)
 
@@ -329,7 +369,7 @@ local function OnLoad()
     itemCategoryBtn:SetWidth(180)
     itemCategoryBtn.style:SetFontSize(FONT_SIZE.XLARGE)
     itemCategoryBtn.dropdownItem = categories
-    itemCategoryBtn:Select(1)
+    itemCategoryBtn:Select(currentCategory)
     local itemCategoryLabel = itemCategoryBtn:CreateChildWidget("label", "itemCategoryLabel", 0, true)
     itemCategoryLabel:SetText("Item Category: ")
     itemCategoryLabel.style:SetAlign(ALIGN.RIGHT)
@@ -343,6 +383,8 @@ local function OnLoad()
         fillItemData(dressUpWindow.itemScrollList, 1, nil)
     end 
 
+    itemScrollList.pageControl:Show(false)
+
     -- Data Pagination
     function itemScrollList:OnPageChangedProc(curPageIdx)
         fillItemData(itemScrollList, curPageIdx, nil) 
@@ -350,9 +392,11 @@ local function OnLoad()
     
     --- Event Handlers for main window
     -- Whenever there's a chat message, see if we should pop the window up.
-    function dressUpWindow:OnEvent(event)
+    function dressUpWindow:OnEvent(event, ...)
         if event == "CHAT_MESSAGE" then
-            isChatMessageFromPlayer(unpack(arg))
+            if arg ~= nil then 
+                isChatMessageFromPlayer(unpack(arg))
+            end 
         end
     end
     dressUpWindow:SetHandler("OnEvent", dressUpWindow.OnEvent)
