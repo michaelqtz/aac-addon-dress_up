@@ -29,6 +29,8 @@ local items
 local ddsPaths
 local pageSize = 1000
 
+local lastCostumeIdEquipped
+
 
 --- Helper Functions
 local function toggleDressUpWindow(isShown)
@@ -36,15 +38,6 @@ local function toggleDressUpWindow(isShown)
         dressUpWindow:Show(isShown)
     end 
 end 
-local function DataSetFunc(subItem, data, setValue)
-    if setValue then
-        local str = string.format("%s", data.value)
-        local id = data.id
-        subItem.id = id
-        subItem.textbox:SetText(str)
-        F_SLOT.SetIconBackGround(subItem.subItemIcon, data.dds)
-    end
-end
 local function modelViewerEquipItem(itemId, animation, modelViewer)
     defaultAnimation = RELAX_ANIMATION_NAME
     if animation == nil then 
@@ -55,6 +48,27 @@ local function modelViewerEquipItem(itemId, animation, modelViewer)
         modelViewer:PlayAnimation(animation, true)
     end 
 end 
+local function modelViewerDyeCostume(dyeItemId, animation, modelViewer)
+    defaultAnimation = RELAX_ANIMATION_NAME
+    if animation == nil then 
+        modelViewer:EquipCostume(lastCostumeIdEquipped, 3, dyeItemId)
+        modelViewer:ApplyModel()
+        modelViewer:PlayAnimation(defaultAnimation, true)
+    else
+        modelViewer:EquipCostume(lastCostumeIdEquipped, 3, dyeItemId)
+        modelViewer:PlayAnimation(animation, true)
+    end 
+end 
+
+local function DataSetFunc(subItem, data, setValue)
+    if setValue then
+        local str = string.format("%s", data.value)
+        local id = data.id
+        subItem.id = id
+        subItem.textbox:SetText(str)
+        F_SLOT.SetIconBackGround(subItem.subItemIcon, data.dds)
+    end
+end
 
 local function LayoutSetFunc(frame, rowIndex, colIndex, subItem)
     local subItemIcon = CreateItemIconButton("subItemIcon", subItem)
@@ -75,9 +89,18 @@ local function LayoutSetFunc(frame, rowIndex, colIndex, subItem)
     clickOverlay:AddAnchor("TOPLEFT", subItem, 0, 0)
     clickOverlay:AddAnchor("BOTTOMRIGHT", subItem, 0, 0)
     function clickOverlay:OnClick()
-        modelViewerEquipItem(subItem.id, nil, dressUpWindow.modelViewer)
+        if categories[currentCategory] == "Dyes" then 
+            modelViewerDyeCostume(subItem.id, nil, dressUpWindow.modelViewer)
+        end
+        if categories[currentCategory] == "Costume" then 
+            lastCostumeIdEquipped = subItem.id
+            modelViewerEquipItem(subItem.id, nil, dressUpWindow.modelViewer)
+        else 
+            modelViewerEquipItem(subItem.id, nil, dressUpWindow.modelViewer)
+        end 
     end 
     clickOverlay:SetHandler("OnClick", clickOverlay.OnClick)
+    subItem.clickOverlay = clickOverlay
 end
 -- Item Scroll Filling Data
 local function fillItemData(itemScrollList, pageIndex, searchText)
@@ -186,6 +209,11 @@ local function OnLoad()
     items = itemsHelper.itemData
     -- And we need their icons.
     ddsPaths = itemsHelper.ddsData
+    -- Let's set the last costume equipped to the current one on the player
+    lastCostumeEquipped = api.Equipment:GetEquippedItemTooltipInfo(EQUIP_SLOT.COSPLAY)
+    if lastCostumeEquipped ~= nil then 
+        lastCostumeIdEquipped = lastCostumeEquipped.lookType
+    end 
 
     -- Model Viewer Window
     local modelViewer = dressUpWindow:CreateChildWidget("modelview", "modelViewer", 0, true)
@@ -230,6 +258,24 @@ local function OnLoad()
         local clickedAnimation = animations[animCategories[animCurrentCategory]][self:GetSelectedIndex()]
         modelViewer:PlayAnimation(clickedAnimation, true)
     end 
+
+    --- Custom Crawling Animation Test
+    -- local animCrawlingBtn = animSelectBtn:CreateChildWidget("button", "animCrawlingBtn", 0, true)
+    -- animCrawlingBtn:AddAnchor("TOPLEFT", animSelectBtn, "TOPRIGHT", 0, 0)
+    -- ApplyButtonSkin(animCrawlingBtn, BUTTON_BASIC.DEFAULT)
+    -- animCrawlingBtn:SetText("crawling btn")
+    -- animationByIdTextEdit = W_CTRL.CreateEdit("equipByIdTextEdit", dressUpWindow)
+    -- animationByIdTextEdit:SetExtent(90, 24)
+    -- animationByIdTextEdit:AddAnchor("TOPLEFT", animCrawlingBtn, "TOPRIGHT", 0, 4)
+
+
+    -- function animCrawlingBtn:OnClick()
+    --     local animationName = animationByIdTextEdit:GetText()
+    --     modelViewer:PlayAnimation(animationName, true)
+    --     api.Log:Info("[CRAWLING] Now playing: " .. tostring(animationName))
+    -- end 
+    -- animCrawlingBtn:SetHandler("OnClick", animCrawlingBtn.OnClick)
+
 
     -- Rotation through buttons
     local rotateRight = modelViewer:CreateChildWidget("button", "rotateRight", 0, true)
@@ -358,7 +404,7 @@ local function OnLoad()
         if itemId ~= nil then 
             modelViewerEquipItem(itemId, nil, modelViewer)
         else
-            api.Log:Info("Dress-Up: " .. equipByIdTextEdit:GetText() .. " is an invalid item ID.")
+            api.Log:Info("[Dress Up] " .. equipByIdTextEdit:GetText() .. " is an invalid item ID.")
         end 
     end 
     equipByIdBtn:SetHandler("OnClick", equipByIdBtn.OnClick)
