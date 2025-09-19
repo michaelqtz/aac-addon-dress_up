@@ -4,7 +4,7 @@ local michaelClientLib = require("dress_up/michael_client")
 local dress_up_addon = {
 	name = "Dress-Up",
 	author = "Michaelqt",
-	version = "1.0",
+	version = "2.0",
 	desc = "Preview the visual appearance of equipment."
 }
 local RELAX_ANIMATION_NAME = "fist_ba_relaxed_rand_idle"
