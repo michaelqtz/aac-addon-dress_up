@@ -1,7 +1,7 @@
 items_helper = {}
 
 local categoryData = {
-    "All",
+    -- "All",
     "Bow",
     "Fishing Rod",
     "Longspear",
@@ -12,9 +12,14 @@ local categoryData = {
     "Greatsword",
     "Cloak",
     "Glider",
-    "Plate Armor",
-    "Leather Armor",
-    "Cloth Armor",
+    -- "Plate Armor",
+    -- "Leather Armor",
+    -- "Cloth Armor",
+    "Head",
+    "Chest",
+    "Hands",
+    "Legs",
+    "Feet",
     "Drum",
     "Flute",
     "Lute",
@@ -23,12 +28,13 @@ local categoryData = {
     "Scepter",
     "Club",
     "Axe",
+    "Rifle",
     "Katana",
     "Sword",
     "Dagger",
     "Costume",
     "Dyes",
-    "Synthesis Gear"
+    -- "Synthesis Gear"
 }
 items_helper.categoryData = categoryData
 

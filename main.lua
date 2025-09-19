@@ -1,4 +1,5 @@
 local api = require("api")
+local michaelClientLib = require("dress_up/michael_client")
 
 local dress_up_addon = {
 	name = "Dress-Up",
@@ -26,10 +27,17 @@ local animCategories
 local animCurrentCategory
 local animations
 local items
+local itemsFromAPI
 local ddsPaths
 local pageSize = 1000
 
 local lastCostumeIdEquipped
+
+local loadTimer = 0
+local loadRate = 100
+local currentLoadId = "1"
+local finishedLoading = false
+
 
 
 --- Helper Functions
@@ -89,14 +97,15 @@ local function LayoutSetFunc(frame, rowIndex, colIndex, subItem)
     clickOverlay:AddAnchor("TOPLEFT", subItem, 0, 0)
     clickOverlay:AddAnchor("BOTTOMRIGHT", subItem, 0, 0)
     function clickOverlay:OnClick()
+        local itemId = tonumber(subItem.id) 
         if categories[currentCategory] == "Dyes" then 
-            modelViewerDyeCostume(subItem.id, nil, dressUpWindow.modelViewer)
+            modelViewerDyeCostume(itemId, nil, dressUpWindow.modelViewer)
         end
         if categories[currentCategory] == "Costume" then 
-            lastCostumeIdEquipped = subItem.id
-            modelViewerEquipItem(subItem.id, nil, dressUpWindow.modelViewer)
+            lastCostumeIdEquipped = itemId
+            modelViewerEquipItem(itemId, nil, dressUpWindow.modelViewer)
         else 
-            modelViewerEquipItem(subItem.id, nil, dressUpWindow.modelViewer)
+            modelViewerEquipItem(itemId, nil, dressUpWindow.modelViewer)
         end 
     end 
     clickOverlay:SetHandler("OnClick", clickOverlay.OnClick)
@@ -116,7 +125,12 @@ local function fillItemData(itemScrollList, pageIndex, searchText)
         local categoryName = categories[currentCategory]
         for _, itemObject in pairs(items[categoryName]) do
             if string.find(itemObject.name:lower(), searchText:lower()) then 
-                local ddsPath = ddsPaths[itemObject.id]
+                local ddsPath = ""
+                if itemObject.path == nil then 
+                    ddsPath = ddsPaths[itemObject.id]
+                else 
+                    ddsPath = itemObject.path
+                end     
                 local itemData = {
                     dds = "game/ui/icon/" .. tostring(ddsPath),
                     id = itemObject.id,
@@ -132,9 +146,15 @@ local function fillItemData(itemScrollList, pageIndex, searchText)
         local count = 1
         local categoryName = categories[currentCategory]
         for _, itemObject in pairs(items[categoryName]) do
-            local ddsPath = ddsPaths[itemObject.id]
+            local ddsPath = ""
+            if itemObject.path == nil and ddsPaths[itemObject.id] then 
+                ddsPath = "game/ui/icon/" .. ddsPaths[itemObject.id]
+            else 
+                ddsPath = itemObject.path
+            end 
+            -- api.Log:Info(itemObject)
             local itemData = {
-                dds = "game/ui/icon/" .. tostring(ddsPath),
+                dds = ddsPath,
                 id = itemObject.id,
                 value = itemObject.name, 
                 isViewData = true, 
@@ -181,6 +201,99 @@ local function OnUpdate(dt)
     elseif turnRight == true then 
         modelViewer:AddRotation(200 * dt / 1000)
     end 
+
+    loadTimer = loadTimer + dt
+    if loadTimer > loadRate and finishedLoading == false then 
+        loadTimer = 0
+        for i=1, 5000 do 
+            local itemInfo = api.Item:GetItemInfoByType(tonumber(currentLoadId))
+            -- api.Log:Info(itemInfo.item_impl)
+            if itemInfo.item_impl ~= "invalid_impl" then 
+                local name = itemInfo.name or "DO NOT TRANSLATE"
+                local path = itemInfo.path or ""
+                local category = itemInfo.category or "DO NOT TRANSLATE"
+                local slotTypeNum = itemInfo.slotTypeNum or "0"
+                local slotType = itemInfo.slotType or "DO NOT TRANSLATE"
+                local itemUsage = itemInfo.itemUsage or "DO NOT TRANSLATE"
+                local lookType = itemInfo.lookType or -1
+                local itemType = itemInfo.itemType or -1
+                -- for key,value in pairs(itemInfo) do
+                --     api.Log:Info("[Dress Up] Item Info: " .. tostring(key) .. " | " .. tostring(value))
+                -- end
+                -- api.Log:Info(currentLoadId)
+                -- api.Log:Info(itemUsage)
+                local isDoNotTranslate = string.find(name, "DO NOT TRANSLATE")
+                if itemUsage == "equip" and isDoNotTranslate == nil then 
+                    -- First, insert it into "All"
+                    if slotTypeNum ~= nil and itemInfo.item_impl ~= "accessory" and itemInfo.item_impl ~= "misc" and itemInfo.item_impl ~= "slave_equipment" and itemInfo.item_impl ~= "mate_armor" then
+                        itemsFromAPI["All"] = itemsFromAPI["All"] or {}
+                        table.insert(itemsFromAPI["All"], {id = currentLoadId, name = name})
+                        if slotTypeNum == 1 then 
+                            -- Head
+                            itemsFromAPI["Head"] = itemsFromAPI["Head"] or {}
+                            table.insert(itemsFromAPI["Head"], {id = currentLoadId, name = name, path = path})
+                        elseif slotTypeNum == 3 then
+                            -- Shirt
+                            itemsFromAPI["Chest"] = itemsFromAPI["Chest"] or {}
+                            table.insert(itemsFromAPI["Chest"], {id = currentLoadId, name = name, path = path})
+                        elseif slotTypeNum == 4 then 
+                            -- Waist
+                        elseif slotTypeNum == 5 then 
+                            -- Pants
+                            itemsFromAPI["Legs"] = itemsFromAPI["Legs"] or {}
+                            table.insert(itemsFromAPI["Legs"], {id = currentLoadId, name = name, path = path})
+                        elseif slotTypeNum == 6 then 
+                            -- Hand
+                            itemsFromAPI["Hands"] = itemsFromAPI["Hands"] or {}
+                            table.insert(itemsFromAPI["Hands"], {id = currentLoadId, name = name, path = path})
+                        elseif slotTypeNum == 7 then 
+                            -- Feet
+                            itemsFromAPI["Feet"] = itemsFromAPI["Feet"] or {}
+                            table.insert(itemsFromAPI["Feet"], {id = currentLoadId, name = name, path = path})
+                        elseif slotTypeNum == 8 then 
+                            -- Wrists
+                        elseif slotTypeNum == 9 then 
+                            -- Cloak
+                            itemsFromAPI["Cloak"] = itemsFromAPI["Cloak"] or {}
+                            table.insert(itemsFromAPI["Cloak"], {id = currentLoadId, name = name, path = path})
+                        elseif slotTypeNum == 13 then 
+                            -- Underwear
+                        elseif slotTypeNum == 14 or slotTypeNum == 15 or slotTypeNum == 16 or slotTypeNum == 17 or slotTypeNum == 18 or slotTypeNum == 20 or slotTypeNum == 21 then 
+                            -- 1H weapons
+                            itemsFromAPI[category] = itemsFromAPI[category] or {}
+                            table.insert(itemsFromAPI[category], {id = currentLoadId, name = name, path = path})
+                            -- for key,value in pairs(itemInfo) do
+                            --     api.Log:Info("[Dress Up] Item Info: " .. tostring(key) .. " | " .. tostring(value))
+                            -- end
+                            -- api.Log:Info(category)
+                        elseif slotTypeNum == 31 then 
+                            -- Costume
+                            itemsFromAPI["Costume"] = itemsFromAPI["Costume"] or {}
+                            table.insert(itemsFromAPI["Costume"], {id = currentLoadId, name = name, path = path})
+                        else
+                            -- api.Log:Info("[Dress Up] Unhandled slotTypeNum: " .. tostring(slotTypeNum) .. " for item ID: " .. tostring(currentLoadId) .. " | " .. tostring(name) .. " | " .. tostring(itemInfo.item_impl))
+                        end 
+                        
+                    end
+                end 
+            end 
+            
+             
+            currentLoadId = X2Util:StrNumericAdd(currentLoadId, "1")
+        end 
+        if tonumber(currentLoadId) < 500000 and tonumber(currentLoadId) > 105000 then
+            currentLoadId = "8000000"
+        elseif tonumber(currentLoadId) < 8800000 and tonumber(currentLoadId) > 8100000 then 
+            currentLoadId = "9000000"
+        elseif tonumber(currentLoadId) > 9100000 then 
+            finishedLoading = true
+            itemsFromAPI["Dyes"] = items["Dyes"]
+            items = itemsFromAPI
+            fillItemData(dressUpWindow.itemScrollList, 1, nil)
+            api.Log:Info("[Dress Up] Finished loading items from API.")
+        end 
+        -- api.Log:Info("[Dress Up] Addon is attempting a load.")
+    end
 end 
 
 
@@ -198,7 +311,7 @@ local function OnLoad()
     -- What page do we start on?
     currentPage = 1
     -- What category should we view?
-    currentCategory = 2
+    currentCategory = 1
     categories = itemsHelper.categoryData
     -- What animation category should we view?
     animCurrentCategory = 4
@@ -207,6 +320,8 @@ local function OnLoad()
     animations = animationHelper.animationData
     -- We need some items to view.
     items = itemsHelper.itemData
+    -- Let's also get a copy of items from the game's API.
+    itemsFromAPI = {}
     -- And we need their icons.
     ddsPaths = itemsHelper.ddsData
     -- Let's set the last costume equipped to the current one on the player
@@ -214,6 +329,15 @@ local function OnLoad()
     if lastCostumeEquipped ~= nil then 
         lastCostumeIdEquipped = lastCostumeEquipped.lookType
     end 
+
+    -- Michael Addon Menu
+    michaelClientLib:initializeMichaelClient()
+	local configMenu = ADDON:GetContent(UIC.SYSTEM_CONFIG_FRAME)
+	configMenu.michaelClient:AddAddon("Dress-Up", function()
+        initModelViewer(dressUpWindow.modelViewer)
+		dressUpWindow:Show(true)
+	end)
+
 
     -- Model Viewer Window
     local modelViewer = dressUpWindow:CreateChildWidget("modelview", "modelViewer", 0, true)
@@ -268,7 +392,11 @@ local function OnLoad()
     -- animationByIdTextEdit:SetExtent(90, 24)
     -- animationByIdTextEdit:AddAnchor("TOPLEFT", animCrawlingBtn, "TOPRIGHT", 0, 4)
 
-
+    -- local itemInfo = api.Item:GetItemInfoByType(tonumber("9000971"))
+    
+    -- for key,value in pairs(itemInfo) do
+    --     api.Log:Info("[Dress Up] Item Info: " .. tostring(key) .. " | " .. tostring(value))
+    -- end
     -- function animCrawlingBtn:OnClick()
     --     local animationName = animationByIdTextEdit:GetText()
     --     modelViewer:PlayAnimation(animationName, true)
@@ -278,6 +406,7 @@ local function OnLoad()
 
 
     -- Rotation through buttons
+    
     local rotateRight = modelViewer:CreateChildWidget("button", "rotateRight", 0, true)
     rotateRight:AddAnchor("BOTTOMLEFT", modelViewer, 5, controlBarYOffset)
     ApplyButtonSkin(rotateRight, BUTTON_BASIC.ROTATE_RIGHT)
@@ -470,6 +599,14 @@ local function OnUnload()
     dressUpWindow:ReleaseHandler("OnEvent")
     dressUpWindow:ReleaseHandler("OnHide")
     dressUpWindow = nil
+
+    items = nil
+    itemsFromAPI = nil
+    ddsPaths = nil
+    animations = nil
+    categories = nil
+
+    michaelClientLib:OnUnload()
 
     api.SaveSettings()
 end
