@@ -35,6 +35,7 @@ local categoryData = {
     "Costume",
     "Dyes",
     -- "Synthesis Gear"
+    "Trade Pack",
 }
 items_helper.categoryData = categoryData
 

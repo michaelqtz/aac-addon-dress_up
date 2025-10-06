@@ -217,13 +217,33 @@ local function OnUpdate(dt)
                 local itemUsage = itemInfo.itemUsage or "DO NOT TRANSLATE"
                 local lookType = itemInfo.lookType or -1
                 local itemType = itemInfo.itemType or -1
+                local useAsSkin = itemInfo.useAsSkin or false
+                local useAsStat = itemInfo.useAsStat
                 -- for key,value in pairs(itemInfo) do
                 --     api.Log:Info("[Dress Up] Item Info: " .. tostring(key) .. " | " .. tostring(value))
                 -- end
                 -- api.Log:Info(currentLoadId)
                 -- api.Log:Info(itemUsage)
                 local isDoNotTranslate = string.find(name, "DO NOT TRANSLATE")
-                if itemUsage == "equip" and isDoNotTranslate == nil then 
+                if slotType == "backpack" and useAsSkin == false and itemInfo.useAsStat == nil and isDoNotTranslate == nil then 
+                    -- for key,value in pairs(itemInfo) do
+                    --     api.Log:Info("[Dress Up] Backpack Item Info: " .. tostring(key) .. " | " .. tostring(value))
+                    -- end
+                    -- api.Log:Info("[Dress Up] Backpack Item Found: " .. tostring(currentLoadId) .. " | " .. tostring(name) .. " | " .. tostring(itemInfo.itemUsage) .. " | " .. tostring(itemInfo.useAsStat))
+                    itemsFromAPI[category] = itemsFromAPI[category] or {}
+                    table.insert(itemsFromAPI[category], {id = currentLoadId, name = name, path = path})
+                end 
+                if slotType == "backpack" and useAsSkin == false and itemInfo.useAsStat ~= nil and isDoNotTranslate == nil then 
+                    -- for key,value in pairs(itemInfo) do
+                    --     api.Log:Info("[Dress Up] Backpack Item Info: " .. tostring(key) .. " | " .. tostring(value))
+                    -- end
+                    -- api.Log:Info("[Dress Up] Backpack Item Found: " .. tostring(currentLoadId) .. " | " .. tostring(name) .. " | " .. tostring(itemInfo.itemUsage) .. " | " .. tostring(itemInfo.useAsStat))
+                    itemsFromAPI[category] = itemsFromAPI[category] or {}
+                    table.insert(itemsFromAPI[category], {id = currentLoadId, name = name, path = path})
+                end 
+                
+                if itemUsage == "equip" and isDoNotTranslate == nil then  
+                    
                     -- First, insert it into "All"
                     if slotTypeNum ~= nil and itemInfo.item_impl ~= "accessory" and itemInfo.item_impl ~= "misc" and itemInfo.item_impl ~= "slave_equipment" and itemInfo.item_impl ~= "mate_armor" then
                         itemsFromAPI["All"] = itemsFromAPI["All"] or {}
