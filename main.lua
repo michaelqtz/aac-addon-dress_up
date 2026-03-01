@@ -23,6 +23,7 @@ local isFirstOpen
 local currentPage
 local currentCategory
 local categories
+local categoryMappings
 local animCategories
 local animCurrentCategory
 local animations
@@ -219,6 +220,13 @@ local function OnUpdate(dt)
                 local itemType = itemInfo.itemType or -1
                 local useAsSkin = itemInfo.useAsSkin or false
                 local useAsStat = itemInfo.useAsStat
+
+                -- Check for a category mapping first
+                if categoryMappings[category] then
+                    category = categoryMappings[category]
+                end
+
+
                 -- for key,value in pairs(itemInfo) do
                 --     api.Log:Info("[Dress Up] Item Info: " .. tostring(key) .. " | " .. tostring(value))
                 -- end
@@ -243,7 +251,6 @@ local function OnUpdate(dt)
                 end 
                 
                 if itemUsage == "equip" and isDoNotTranslate == nil then  
-                    
                     -- First, insert it into "All"
                     if slotTypeNum ~= nil and itemInfo.item_impl ~= "accessory" and itemInfo.item_impl ~= "misc" and itemInfo.item_impl ~= "slave_equipment" and itemInfo.item_impl ~= "mate_armor" then
                         itemsFromAPI["All"] = itemsFromAPI["All"] or {}
@@ -333,6 +340,8 @@ local function OnLoad()
     -- What category should we view?
     currentCategory = 1
     categories = itemsHelper.categoryData
+
+    categoryMappings = itemsHelper.categoryMappings
     -- What animation category should we view?
     animCurrentCategory = 4
     animCategories = animationHelper.categories

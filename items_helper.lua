@@ -1,13 +1,31 @@
 items_helper = {}
 
+local categoryMappings = {
+    ["Dgn Bow"] = "Bow",
+    ["Dgn Staff"] = "Staff",
+    ["Dgn Greatclub"] = "Greatclub",
+    ["Dgn Warclub"] = "Warclub",
+    ["Dungeon Greataxe"] = "Greataxe",
+    ["Dgn Shield"] = "Shield",
+    ["Dgn Shortspear"] = "Shortspear",
+    ["Dungeon Club"] = "Club",
+    ["Dungeon Dagger"] = "Dagger",
+}
+items_helper.categoryMappings = categoryMappings
+
 local categoryData = {
     -- "All",
     "Bow",
+    -- "Dgn Bow",
     "Fishing Rod",
     "Longspear",
     "Staff",
+    -- "Dgn Staff",
     "Greatclub",
+    -- "Dgn Greatclub",
+    -- "Dgn Warclub",
     "Greataxe",
+    -- "Dungeon Greataxe",
     "Nodachi",
     "Greatsword",
     "Cloak",
@@ -24,14 +42,18 @@ local categoryData = {
     "Flute",
     "Lute",
     "Shield",
+    -- "Dgn Shield",
     "Shortspear",
+    -- "Dgn Shortspear",
     "Scepter",
     "Club",
+    -- "Dungeon Club",
     "Axe",
     "Rifle",
     "Katana",
     "Sword",
     "Dagger",
+    -- "Dungeon Dagger",
     "Costume",
     "Dyes",
     -- "Synthesis Gear"
